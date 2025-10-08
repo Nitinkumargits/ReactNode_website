@@ -47,3 +47,11 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+
+# Security files - PEM keys and certificates
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+key-pair/
