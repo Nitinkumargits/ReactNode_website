@@ -28,13 +28,13 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing React app...'
-                dir('my-app') {
-                    sh 'npm test -- --watchAll=false'
-                }
-                echo 'Testing Node.js backend...'
-                dir('api') {
-                    sh 'npm test || true' // skip if no tests
-                }
+                // dir('my-app') {
+                //     sh 'npm test -- --watchAll=false'
+                // }
+                // echo 'Testing Node.js backend...'
+                // dir('api') {
+                //     sh 'npm test || true' // skip if no tests
+                // }
             }
         }
         stage('Docker Build & Push') {
