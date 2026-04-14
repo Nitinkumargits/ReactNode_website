@@ -12,6 +12,7 @@ pipeline {
     environment {
         DOCKER_IMAGE = "nitinkdocker18/react-nodejs-app"
         EC2_HOST = "ec2-user@43.205.253.25"
+        SKIP_CI = "false"
     }
 
     stages {
@@ -25,18 +26,23 @@ pipeline {
         stage('Check for [skip ci]') {
             steps {
                 script {
-                    def commitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    def commitMsg = sh(
+                        script: 'git log -1 --pretty=%B',
+                        returnStdout: true
+                    ).trim()
 
                     if (commitMsg.contains('[skip ci]')) {
                         echo 'Skipping pipeline due to [skip ci]'
-                        currentBuild.result = 'SUCCESS'
-                        error("Stopping pipeline intentionally")  // ✅ stops full pipeline
+                        env.SKIP_CI = "true"
                     }
                 }
             }
         }
 
         stage('Increment Version') {
+            when {
+                expression { env.SKIP_CI != "true" }
+            }
             steps {
                 sh '''
                     cd my-app
@@ -58,6 +64,9 @@ pipeline {
         }
 
         stage('Build') {
+            when {
+                expression { env.SKIP_CI != "true" }
+            }
             steps {
                 dir('my-app') {
                     sh 'npm install'
@@ -71,6 +80,9 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
+            when {
+                expression { env.SKIP_CI != "true" }
+            }
             steps {
                 script {
 
@@ -84,7 +96,7 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
-                    env.DOCKER_TAG = "${backendVersion}-fe${frontendVersion}"
+                    env.DOCKER_TAG = "${backendVersion}-fe${frontendVersion}-${BUILD_NUMBER}"
 
                     sh '''
                         docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
@@ -110,6 +122,9 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
+            when {
+                expression { env.SKIP_CI != "true" }
+            }
             steps {
                 withCredentials([sshUserPrivateKey(
                     credentialsId: 'ec2-ssh-key',
@@ -123,6 +138,7 @@ pipeline {
                         docker stop app || true &&
                         docker rm app || true &&
 
+                        # kill any container using port 3000
                         docker ps -q --filter publish=3000 | xargs -r docker stop &&
                         docker ps -aq --filter publish=3000 | xargs -r docker rm &&
 
@@ -131,6 +147,15 @@ pipeline {
                           --restart always \
                           -p 3000:3080 \
                           $DOCKER_IMAGE:$DOCKER_TAG
+
+                        # wait for app to start
+                        sleep 10
+
+                        # health check
+                        curl -f http://localhost:3000 || exit 1
+
+                        # cleanup old images
+                        docker system prune -af
                         "
                     '''
                 }
@@ -140,6 +165,7 @@ pipeline {
 
     post {
         always {
+            echo 'Cleaning Jenkins Docker cache...'
             sh 'docker image prune -f'
         }
     }
