@@ -17,7 +17,7 @@ pipeline {
                 echo 'Building React app...'
                 dir('my-app') {
                     sh 'npm install'
-                    sh 'npm run build'
+                    sh 'NODE_OPTIONS=--openssl-legacy-provider npm run build'
                 }
                 echo 'Building Node.js backend...'
                 dir('api') {
