@@ -1,4 +1,20 @@
 pipeline {
+        options {
+            skipDefaultCheckout()
+        }
+        stage('Check for [skip ci]') {
+            steps {
+                script {
+                    def commitMsg = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                    if (commitMsg.contains('[skip ci]')) {
+                        echo 'Found [skip ci] in commit message. Exiting pipeline early to prevent loop.'
+                        currentBuild.result = 'SUCCESS'
+                        // Exit pipeline
+                        return
+                    }
+                }
+            }
+        }
     agent any
 
     tools {
@@ -13,15 +29,21 @@ pipeline {
     stages {
 
         stage('Increment Version') {
-            steps {
-                echo 'Incrementing version...'
-                sh '''
-                  cd my-app
-                  npm version patch --no-git-tag-version
-                  cd ../api
-                  npm version patch --no-git-tag-version
-                '''
-            }
+                        steps {
+                                echo 'Incrementing version...'
+                                sh '''
+                                    cd my-app
+                                    npm version patch --no-git-tag-version
+                                    cd ../api
+                                    npm version patch --no-git-tag-version
+                                    cd ..
+                                    git config user.email "ci-bot@example.com"
+                                    git config user.name "ci-bot"
+                                    git add my-app/package.json api/package.json
+                                    git commit -m "ci: increment version [skip ci]" || echo "No changes to commit"
+                                    git push origin HEAD:master || echo "No changes to push"
+                                '''
+                        }
         }
 
         stage('Build') {
