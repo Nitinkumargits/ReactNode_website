@@ -49,10 +49,18 @@ pipeline {
                 echo 'Deploying to EC2...'
                 script {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no -i $EC2_KEY $EC2_HOST "docker pull $DOCKER_IMAGE:$DOCKER_TAG && docker stop app || true && docker rm app || true && docker run -d  -p 3000:3080 -p 50000:50000 $DOCKER_IMAGE:$DOCKER_TAG"
+                        ssh -o StrictHostKeyChecking=no -i $EC2_KEY $EC2_HOST "
+                        docker pull $DOCKER_IMAGE:$DOCKER_TAG &&
+                        docker stop app || true &&
+                        docker rm app || true &&
+                        docker run -d \
+                          --name app \
+                          -p 3000:3080 \
+                          $DOCKER_IMAGE:$DOCKER_TAG
+                        "
                     '''
                 }
             }
-        }
+}
     }
 }
