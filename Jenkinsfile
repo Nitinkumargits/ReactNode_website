@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'Nodejs'
+    }
+
     environment {
         DOCKER_IMAGE = "nitinkdocker18/react-nodejs-app"
         DOCKER_TAG = "latest"
