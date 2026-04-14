@@ -9,7 +9,7 @@ pipeline {
         DOCKER_IMAGE = "nitinkdocker18/react-nodejs-app"
         DOCKER_TAG = "latest"
         EC2_HOST = "ec2-user@43.205.253.25"
-        EC2_KEY = credentials('ec2-server-key') // Jenkins credential id for SSH private key
+        EC2_KEY = credentials('ec2-ssh-key') // Jenkins credential id for SSH private key
     }
     stages {
         stage('Build') {
@@ -51,7 +51,7 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo 'Deploying to EC2...'
-                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-server-key', keyFileVariable: 'EC2_KEY')]) {
+                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'EC2_KEY')]) {
                     script {
                         sh '''
                             ssh -o StrictHostKeyChecking=no -i $EC2_KEY $EC2_HOST "
