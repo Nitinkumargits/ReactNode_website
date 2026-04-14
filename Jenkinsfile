@@ -5,7 +5,7 @@ pipeline {
         DOCKER_IMAGE = "nitinkdocker18/react-nodejs-app"
         DOCKER_TAG = "latest"
         EC2_HOST = "ec2-user@43.205.253.25"
-        EC2_KEY = credentials('ec2-ssh-key') // Jenkins credential id for SSH private key
+        EC2_KEY = credentials('ec2-server-key') // Jenkins credential id for SSH private key
     }
     stages {
         stage('Build') {
