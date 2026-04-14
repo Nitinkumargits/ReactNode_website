@@ -41,21 +41,23 @@ pipeline {
 
         stage('Docker Build & Push') {
             steps {
-                script {
-                    // Get versions from backend and frontend package.json
-                    def backendVersion = sh(script: "node -p -e \"require('../api/package.json').version\"", returnStdout: true).trim()
-                    def frontendVersion = sh(script: "node -p -e \"require('../my-app/package.json').version\"", returnStdout: true).trim()
-                    def combinedTag = backendVersion + "-fe" + frontendVersion
-                    env.DOCKER_TAG = combinedTag
-                    sh "docker build -t $DOCKER_IMAGE:$DOCKER_TAG ."
-                    sh "docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest"
-                    withCredentials([usernamePassword(credentialsId: 'nitinkdocker18', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh '''
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push "$DOCKER_IMAGE:$DOCKER_TAG"
-                            docker push "$DOCKER_IMAGE:latest"
-                            docker logout
-                        '''
+                dir(env.WORKSPACE) {
+                    script {
+                        // Get versions from backend and frontend package.json
+                        def backendVersion = sh(script: "node -p -e \"require('./api/package.json').version\"", returnStdout: true).trim()
+                        def frontendVersion = sh(script: "node -p -e \"require('./my-app/package.json').version\"", returnStdout: true).trim()
+                        def combinedTag = backendVersion + "-fe" + frontendVersion
+                        env.DOCKER_TAG = combinedTag
+                        sh "docker build -t $DOCKER_IMAGE:$DOCKER_TAG ."
+                        sh "docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest"
+                        withCredentials([usernamePassword(credentialsId: 'nitinkdocker18', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh '''
+                                echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                                docker push "$DOCKER_IMAGE:$DOCKER_TAG"
+                                docker push "$DOCKER_IMAGE:latest"
+                                docker logout
+                            '''
+                        }
                     }
                 }
             }
