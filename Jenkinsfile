@@ -7,7 +7,6 @@ pipeline {
 
     environment {
         DOCKER_IMAGE = "nitinkdocker18/react-nodejs-app"
-        DOCKER_TAG = "${BUILD_NUMBER}"
         EC2_HOST = "ec2-user@43.205.253.25"
     }
 
@@ -43,22 +42,18 @@ pipeline {
         stage('Docker Build & Push') {
             steps {
                 script {
-                    sh '''
-                        docker build -t $DOCKER_IMAGE:$DOCKER_TAG .
-                        docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest
-                    '''
-
-                    withCredentials([usernamePassword(
-                        credentialsId: 'nitinkdocker18',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
+                    // Get versions from backend and frontend package.json
+                    def backendVersion = sh(script: "node -p -e \"require('../api/package.json').version\"", returnStdout: true).trim()
+                    def frontendVersion = sh(script: "node -p -e \"require('../my-app/package.json').version\"", returnStdout: true).trim()
+                    def combinedTag = backendVersion + "-fe" + frontendVersion
+                    env.DOCKER_TAG = combinedTag
+                    sh "docker build -t $DOCKER_IMAGE:$DOCKER_TAG ."
+                    sh "docker tag $DOCKER_IMAGE:$DOCKER_TAG $DOCKER_IMAGE:latest"
+                    withCredentials([usernamePassword(credentialsId: 'nitinkdocker18', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
                             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            
-                            docker push $DOCKER_IMAGE:$DOCKER_TAG
-                            docker push $DOCKER_IMAGE:latest
-                            
+                            docker push "$DOCKER_IMAGE:$DOCKER_TAG"
+                            docker push "$DOCKER_IMAGE:latest"
                             docker logout
                         '''
                     }
@@ -69,13 +64,9 @@ pipeline {
         stage('Deploy to EC2') {
             steps {
                 echo 'Deploying...'
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'ec2-ssh-key',
-                    keyFileVariable: 'EC2_KEY'
-                )]) {
+                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'EC2_KEY')]) {
                     sh '''
                         ssh -o StrictHostKeyChecking=no -i $EC2_KEY $EC2_HOST "
-
                         docker pull $DOCKER_IMAGE:$DOCKER_TAG &&
 
                         docker stop app || true &&
